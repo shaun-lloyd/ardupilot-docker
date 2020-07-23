@@ -22,6 +22,7 @@ ENV USER ardupilot
 USER ardupilot
 WORKDIR /ardupilot
 
+RUN sudo chown ardupilot:ardupilot -R /ardupilot
 # ardupilot repo
 RUN git config --global core.autocrlf false && \
     git clone "${GIT_REPO}"  /ardupilot && \
