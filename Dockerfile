@@ -2,8 +2,10 @@ FROM ubuntu:18.04 as dev
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG APT_CACHE=
+ARG GIT_REPO=https://github.com/ArduPilot/ardupilot.git
+ARG GIT_BRANCH=master
 
-RUN [ -z "$APT_CACHE" ] && echo "Acquire::http { Proxy \"${APT_CACHE}\"; };" >> /etc/apt/apt.conf.d/01proxy
+RUN [ ! -z "$APT_CACHE" ] && echo "Acquire::http { Proxy \"${APT_CACHE}\"; };" >> /etc/apt/apt.conf.d/01proxy
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential ca-certificates rsync lsb-release sudo git software-properties-common cmake
@@ -18,18 +20,19 @@ RUN groupadd -g 1000 ardupilot && \
 ENV CCACHE_MAXSIZE 1G
 ENV USER ardupilot
 USER ardupilot
-WORKDIR /usr/src/ardupilot
+WORKDIR /ardupilot
 
 # ardupilot repo
 RUN git config --global core.autocrlf false && \
-    git clone https://github.com/ArduPilot/ardupilot.git /usr/src/ardupilot && \
-    git submodule update --init --recursive
+    git clone "${GIT_REPO}"  /ardupilot && \
+    git submodule update --init --recursive && \
+    git checkout "${GIT_BRANCH}"
 
 # Bootstrap
 ENV SKIP_AP_EXT_ENV=1 SKIP_AP_GRAPHIC_ENV=1 SKIP_AP_COV_ENV=1 SKIP_AP_GIT_CHECK=1
 ENV PATH ${PATH}:/usr/lib/ccache:/ardupilot/Tools:/ardupilot/Tools/autotest:/ardupilot/.local/bin
 
-RUN /usr/src/ardupilot/Tools/environment_install/install-prereqs-ubuntu.sh -y
+RUN /ardupilot/Tools/environment_install/install-prereqs-ubuntu.sh -y
 
 # add waf alias to ardupilot waf to .bashrc
 RUN echo "alias waf=\"/ardupilot/waf\"" >> ~/.bashrc && \
@@ -37,34 +40,25 @@ RUN echo "alias waf=\"/ardupilot/waf\"" >> ~/.bashrc && \
     echo "if [ -d \"\$HOME/.local/bin\" ] ; then\nPATH=\"\$HOME/.local/bin:\$PATH\"\nfi" >> ~/.bashrc && \
     . ~/.bashrc
 
-# config ccache
-RUN cd /usr/lib/ccache && \
-    sudo ln -s /usr/bin/ccache arm-none-eabi-g++ && \
-    sudo ln -s /usr/bin/ccache arm-none-eabi-gcc
-
 # Cleanup
 RUN sudo apt-get clean && \
     sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-FROM dev as build
+FROM dev as build-waf
 
-# build jsm-sim
-# RUN mkdir /usr/src/jsmsim/build && cd /usr/src/jsmsim/build && \
-#     cmake -DCMAKE_CXX_FLAGS_RELEASE="-O3 -march=native -mtune=native" -DCMAKE_C_FLAGS_RELEASE="-O3 -march=native -mtune=native" -DCMAKE_BUILD_TYPE=Release .. && \
-#     make 
+ARG AP_BOARD=sitl
+ARG AP_VEHICLE=
+ARG WAF_OPT=
 
-# Configure ardupilot
-RUN ./waf configure
+# Config
+RUN /ardupilot/waf configure --board ${AP_BOARD}
 
-# Build ardupilot
-RUN ./waf
+# Build everything and run all tests
+RUN /ardupilot/waf ${WAF_OPT} --board ${AP_BOARD}
 
-# Clean
-# RUN ./waf clean
+FROM build-waf as sitl
 
-FROM build as sitl
-
-WORKDIR /usr/src/ardupilot/ArduPilot
+WORKDIR /ardupilot/ArduPlane
 ENTRYPOINT [ "sim_vehicle.py" ]
 
 FROM ubuntu:18.04 as release
