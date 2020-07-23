@@ -1,0 +1,28 @@
+FROM ubuntu:18.04 as dev
+
+# RUN echo "Set disable_coredump false" >> /etc/sudo.conf
+ARG DEBIAN_FRONTEND=noninteractive
+ARG APT_CACHE=
+ARG TZ=Australia/Melbourne
+
+RUN [ "$APT_CACHE" != '' ] && echo "Acquire::http { Proxy \"$APT_CACHE\"; };" >> /etc/apt/apt.conf.d/01proxy
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        tzdata build-essential ca-certificates rsync lsb-release sudo git software-properties-common cmake
+
+# jsm-sim
+RUN git clone git://github.com/JSBSim-Team/jsbsim.git /usr/src/jsmsim
+
+FROM dev as builder
+
+build jsm-sim
+RUN mkdir /usr/src/jsmsim/build && cd /usr/src/jsmsim/build && \
+    cmake -DCMAKE_CXX_FLAGS_RELEASE="-O3 -march=native -mtune=native" -DCMAKE_C_FLAGS_RELEASE="-O3 -march=native -mtune=native" -DCMAKE_BUILD_TYPE=Release .. && \
+    make 
+
+FROM ubuntu:18.04 as release
+
+COPY --from=builder /build /usr
+
+#CMD [ "/usr/src/ardupilot/Tools/autotest/sim_vehicle.py --map --console" ]
+
