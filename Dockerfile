@@ -5,7 +5,7 @@ ARG APT_CACHE=
 ARG GIT_REPO=https://github.com/ArduPilot/ardupilot.git
 ARG GIT_BRANCH=master
 
-RUN [ ! -z "$APT_CACHE" ] && echo "Acquire::http { Proxy \"${APT_CACHE}\"; };" >> /etc/apt/apt.conf.d/01proxy
+RUN if [ ! -z "$APT_CACHE" ]; then echo "Acquire::http { Proxy \"${APT_CACHE}\"; };" >> /etc/apt/apt.conf.d/01proxy; fi
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential ca-certificates rsync lsb-release sudo git software-properties-common cmake
@@ -60,7 +60,3 @@ FROM build-waf as sitl
 
 WORKDIR /ardupilot/ArduPlane
 ENTRYPOINT [ "sim_vehicle.py" ]
-
-FROM ubuntu:18.04 as release
-
-COPY --from=builder /build /usr
