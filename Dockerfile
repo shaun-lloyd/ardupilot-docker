@@ -57,7 +57,8 @@ RUN /ardupilot/waf configure --board ${AP_BOARD}
 # Build everything and run all tests
 RUN /ardupilot/waf ${WAF_OPT} --board ${AP_BOARD}
 
-FROM build-waf as sitl
+FROM build-waf as release
 
 WORKDIR /ardupilot/ArduPlane
-ENTRYPOINT [ "sim_vehicle.py" ]
+#RUN sim_vehicle.py
+#ENTRYPOINT [ "sim_vehicle.py" ]
