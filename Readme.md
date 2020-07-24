@@ -1,7 +1,6 @@
 # Ardupilot-Docker
 
 A Multistage dockerfile for Ardupilot developement, test, sitl and release.
-demo
 
 # Getting Started
 This dockerfile adds the following features:
