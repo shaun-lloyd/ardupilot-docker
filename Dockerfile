@@ -4,6 +4,9 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG APT_CACHE=
 ARG GIT_REPO=https://github.com/ArduPilot/ardupilot.git
 ARG GIT_BRANCH=master
+ARG USER_NAME=ardupilot
+ARG USER_UID=1000
+ARG USER_GID=1000
 
 RUN if [ ! -z "$APT_CACHE" ]; then echo "Acquire::http { Proxy \"${APT_CACHE}\"; };" >> /etc/apt/apt.conf.d/01proxy; fi
 RUN apt-get update && \
@@ -11,18 +14,19 @@ RUN apt-get update && \
         build-essential ca-certificates rsync lsb-release sudo git software-properties-common cmake
 
 # Create non-root user for pip 
-RUN groupadd -g 1000 ardupilot && \
-    useradd -d /home/ardupilot -m ardupilot -u 1000 -g 1000 && \
-    usermod -a -G dialout ardupilot && \
-    echo "ardupilot ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ardupilot && \
-    chmod 0440 /etc/sudoers.d/ardupilot
+RUN groupadd -g ${USER_GID} ${USER_NAME} && \
+    useradd -d /home/${USER_NAME} -m ${USER_NAME} -u ${USER_UID} -g ${USER_GID} && \
+    usermod -a -G dialout ${USER_NAME} && \
+    echo "${USER_NAME} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${USER_NAME}" && \
+    chmod 0440 "/etc/sudoers.d/${USER_NAME}"
 
 ENV CCACHE_MAXSIZE 1G
-ENV USER ardupilot
-USER ardupilot
+ENV USER ${USER_NAME}
+USER ${USER_NAME}
+
 WORKDIR /ardupilot
 
-RUN sudo chown ardupilot:ardupilot -R /ardupilot
+RUN sudo chown ${USER_NAME}:${USER_NAME} -R /ardupilot
 # ardupilot repo
 RUN git config --global core.autocrlf false && \
     git clone "${GIT_REPO}"  /ardupilot && \
