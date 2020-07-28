@@ -2,7 +2,7 @@
 
 A Multistage dockerfile for Ardupilot developement, test, sitl and release.
 
-* ANY HELP AND GUIDANCE WELCOME !
+* Any feedback and guidance welcomed.
 
 # Getting Started
 This dockerfile adds the following features:
